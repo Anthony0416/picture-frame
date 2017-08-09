@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>canvas缩放</title>
+    <style>
+    	body {
+    		overflow: hidden;
+    		font-size: 0;
+    		margin: 0;
+    		padding: 0;
+    		cursor: default;
+    	}
+    	p {
+    		margin: 0;
+    		padding: 0;
+    	}
+    	.left {
+    		width: 80%;
+    		display: inline-block;
+    		box-sizing: border-box;
+    		vertical-align: top;
+    		background: #555;
+    	}
+    	.right {
+    		display: inline-block;
+    		width: 20%;
+    		border-left: 1px solid #AAAAAA;
+    		box-sizing: border-box;
+    		overflow: auto;
+    		vertical-align: top;
+    		position: relative;
+    	}
+    	.btnGroup {
+    		width: 20%;
+    		padding-bottom: 10px;
+    		border-bottom: 1px solid #AAAAAA;
+    		border-left: 1px solid #AAAAAA;
+    		position: fixed;
+    		top: 0;
+    		left: 80%;
+    		background: #fff;
+    	}
+    	.textHere {
+    		margin-top: 45px;
+    		font-size: 12px;
+    		line-height: 20px;
+    	}
+    	.textHere div {
+    		padding: 10px;
+    		border-bottom: 1px solid #AAAAAA;
+    	}
+    	.textHere div p span{
+    		margin-right: 10px;
+    	}
+    	.textHere div button{
+    		font-size: 12px;
+    		margin: 10px 10px 0 0;
+    	}
+    	.textHere div select{
+    		font-size: 12px;
+    		/*margin: 10px 10px 0 0;*/
+    	}
+    	
+    	.btnGroup span {
+    		display: inline-block;
+    		margin: 7px 0 0 10px;
+    		padding: 3px 12px;
+    		font-size: 12px;
+    		border: 1px solid #aaa;
+    		color: #aaa;
+    	}
+    	.btnGroup .on {
+    		background: #0083e9;
+    		color: #fff;
+    	}
+    </style>
+</head>
+<body>
+<div class="left">
+	<img id="img" src="331546.jpg" style="display: none;"/>
+	<canvas id="canvas" width="1300" height="1300"></canvas>
+</div>
+<div class="right">
+	<div class="btnGroup">
+		<span id="draw" class="on">绘制</span>
+		<span id="move" class="">拖动</span>
+	</div>
+	<div class="textHere">
+		
+	</div>
+</div>
+
+
+<script src="http://www.lanrenzhijia.com/ajaxjs/1.11.0/jquery-1.11.0.min.js"></script>
+<script src="jcanvas.js"></script>
+<script src="e-smart-zoom-jquery.min.js"></script>
+<script>
+	var action = 'draw';
+	var height = window.innerHeight || window.screen.availHeight || document.body.clientHeight;
+	$('.left').css('height',height + 'px');
+	$('.middle').css('height',height + 'px');
+	$('.right').css('height',height + 'px');
+	$('#draw').click(function(){
+		$('#move').removeClass('on');
+		$(this).addClass('on');
+		action = 'draw';
+		obj.mouseMoveUnbind();
+	});
+	$('#move').click(function(){
+		$('#draw').removeClass('on');
+		$(this).addClass('on');
+		action = 'move';
+		obj.mouseMoveBind();
+	})
+	window.onresize = function(){
+		var height = window.innerHeight || window.screen.availHeight || document.body.clientHeight;
+		$('.left').css('height',height + 'px');
+		$('.middle').css('height',height + 'px');
+		$('.right').css('height',height + 'px');
+	}
+</script>
+<script>
+	// 初始化
+	$(document).ready(function() {
+		obj = $('#canvas').smartZoom({
+			'containerClass': 'zoomableContainer'
+		});
+	});
+	// 获取图片
+	
+	// 计算宽高
+	$('#img').ready(function(){
+		$('#canvas').attr('height',parseInt($('#img').css('height')));
+		$('#canvas').attr('width',parseInt($('#img').css('width')));
+		$('#canvas').css('background','url(' + $('#img').attr('src') + ')')
+		// 销毁缩放
+		$('#canvas').smartZoom("destroy")
+		// 重置缩放
+		obj = $('#canvas').smartZoom({
+			'containerClass': 'zoomableContainer'
+		});
+	})
+	var positionObj = [];
+    var layerIndex=0;
+    var layerName='layer1';
+    var textName='text1';
+    CanvasExt = {
+        drawRect:function(canvasId,penColor,strokeWidth){
+            var that=this;
+            that.penColor=penColor;
+            that.penWidth=strokeWidth;
+
+            var canvas=document.getElementById(canvasId);
+            //canvas 的矩形框
+
+            var x=0;
+            var y=0;
+            
+            let checkDraw = false;
+
+            //鼠标点击按下事件
+            canvas.onmousedown=function(e){
+            	if(action == 'move'){
+            		obj.mouseMoveBind();
+            	} else {
+            		obj.mouseMoveUnbind();
+		        	// 重设checkDraw为false
+		        	checkDraw = false;
+		            //设置画笔颜色和宽度
+		            var color=that.penColor;
+		            var penWidth=that.penWidth;
+					// 索引（从1开始）及每个图层的名字（layer+索引）
+		            layerIndex++;
+		            layerName='layer' + layerIndex;
+		            textName='text' + layerIndex;
+		            var canvasRect = canvas.getBoundingClientRect();
+		            //矩形框的左上角坐标
+		            var canvasLeft=canvasRect.left;
+		            var canvasTop=canvasRect.top;
+		            // 获取放大后的偏移量
+					var l = $('#canvas').css('transform').length;
+					var scale = parseFloat($('#canvas').css('transform').substring(7, l - 1).split(', ')[0]);
+		            // 矩形框开始坐标
+		            x = (e.clientX-canvasLeft)/scale;
+		            y = (e.clientY-canvasTop)/scale;
+		            console.log(scale,x,y,e.clientX,canvasLeft);
+					// 添加图层
+		            $("#"+canvasId).addLayer({
+		                type: 'rectangle',
+		                strokeStyle: color,
+		                strokeWidth: penWidth,
+		                name:layerName,
+		                fromCenter: false,
+		                x: x, y: y,
+		                width: 1,
+		                height: 1
+		            });
+		            // 加上索引编号
+		            $("#"+canvasId).addLayer({
+		                type: 'text',
+		                fillStyle: '#000',
+		                name:textName,
+		                x: x, y: y - 10,
+		                fontSize: 12,
+		                fontFamily: 'microsoft yahei',
+		                text: layerIndex
+		            });
+					
+		            $("#"+canvasId).drawLayers();
+		            $("#"+canvasId).saveCanvas();
+		            //鼠标移动事件，画图
+		            canvas.onmousemove=function(e){
+		            	// 如果鼠标移动 checkDraw为true
+		            	checkDraw = true;
+		            	// 计算宽度
+		                width = (e.clientX-canvasLeft)/scale-x;
+		                height = (e.clientY-canvasTop)/scale-y;
+						// 移除上个层
+		                $("#"+canvasId).removeLayer(layerName);
+		
+		                $("#"+canvasId).addLayer({
+		                    type: 'rectangle',
+		                    strokeStyle: color,
+		                    strokeWidth: penWidth,
+		                    name:layerName,
+		                    fromCenter: false,
+		                    x: x, y: y,
+		                    width: width,
+		                    height: height
+		                });
+		
+		                $("#"+canvasId).drawLayers();
+		            }
+            	}
+            };
+
+            canvas.onmouseup=function(e){
+				if(action == 'draw'){
+					// 鼠标松开，判断是否画框，未画则让索引减一
+					if (checkDraw) {
+						var color=that.penColor;
+		                var penWidth=that.penWidth;
+						// 阻止鼠标移动事件
+		                canvas.onmousemove=null;
+		                var canvasRect = canvas.getBoundingClientRect();
+			            //矩形框的左上角坐标
+			            var canvasLeft=canvasRect.left;
+			            var canvasTop=canvasRect.top;
+			            // 获取放大后的偏移量
+						var l = $('#canvas').css('transform').length;
+						var scale = parseFloat($('#canvas').css('transform').substring(7, l - 1).split(', ')[0]);
+		                
+		                width = (e.clientX-canvasLeft)/scale-x;
+		                height = (e.clientY-canvasTop)/scale-y;
+		                $("#"+canvasId).removeLayer(layerName);
+		                // 双重判断
+		                if(height == 0||width == 0){
+		                	// 清除无效layer
+							$("#"+canvasId).removeLayer(textName);
+							layerIndex--;
+		                } else {
+		                	$("#"+canvasId).addLayer({
+			                    type: 'rectangle',
+			                    strokeStyle: color,
+			                    strokeWidth: penWidth,
+			                    name:layerName,
+			                    fromCenter: false,
+			                    x: x, y: y,
+			                    width: width,
+			                    height: height
+			                });
+			                positionObj.push([layerIndex,x,y,x+width,y+height,'']);
+			                console.log(positionObj);
+			                positionIfo();
+		                }
+		
+		                $("#"+canvasId).removeLayer(layerName);
+		
+		                $("#"+canvasId).addLayer({
+		                    type: 'rectangle',
+		                    strokeStyle: color,
+		                    strokeWidth: penWidth,
+		                    name:layerName,
+		                    fromCenter: false,
+		                    x: x, y: y,
+		                    width: width,
+		                    height: height
+		                });
+		
+		                $("#"+canvasId).drawLayers();
+		                $("#"+canvasId).saveCanvas();
+					} else {
+						canvas.onmousemove=null;
+						// 清除无效layer
+						$("#"+canvasId).removeLayer(layerName);
+						$("#"+canvasId).removeLayer(textName);
+						layerIndex--;
+						$("#"+canvasId).drawLayers();
+						$("#"+canvasId).saveCanvas();
+					}
+	            }
+			}
+        }
+    };
+
+    drawPen();
+    function drawPen(){
+        var color = "red";
+        var width = 1;
+        CanvasExt.drawRect("canvas",color,width);
+    }
+    // 修改文字
+	function positionIfo() {
+		let t = '',
+			xmin = 0,
+			ymin = 0,
+			xmax = 0,
+			ymax = 0;
+		for (let i = 0, l = positionObj.length; i<l; i++) {
+			if(positionObj[i][1] < positionObj[i][3]) {
+				xmin = Math.round(positionObj[i][1]);
+				xmax = Math.round(positionObj[i][3]);
+			}else {
+				xmin = Math.round(positionObj[i][3]);
+				xmax = Math.round(positionObj[i][1]);
+			};
+			if(positionObj[i][2] < positionObj[i][4]) {
+				ymin = Math.round(positionObj[i][2]);
+				ymax = Math.round(positionObj[i][4]);
+			}else {
+				ymin = Math.round(positionObj[i][4]);
+				ymax = Math.round(positionObj[i][2]);
+			};
+			positionObj[i][1] = xmin;
+			positionObj[i][3] = xmax;
+			positionObj[i][2] = ymin;
+			positionObj[i][4] = ymax;
+			t += '<div>' +
+					'<p>编号：' + positionObj[i][0] + '</p>' +
+					'<p><span>xmin：' + xmin + '</span><span>xmax：' + xmax + '</span><span>ymin：' + ymin + '</span><span>ymax：' + ymax + '</span></p>' +
+					'<button onclick="delect(' + positionObj[i][0] + ')">删除</button>' +
+				'</div>';
+			
+		};
+		$('.textHere').html(t);
+	}
+	// 删除文字
+	function delect(n) {
+		let index = '';
+		for (let i = 0, l = positionObj.length; i<l; i++) {
+			if (positionObj[i][0] == n) {
+				index = i;
+				break;
+			}
+		};
+		positionObj.splice(index,1);
+		// 重绘
+		positionIfo();
+		$('#canvas').removeLayer('layer'+n);
+		$('#canvas').removeLayer('text'+n);
+		$('#canvas').drawLayers();
+		$("#canvas").saveCanvas();
+	}
+</script>
+</body>
+</html>
